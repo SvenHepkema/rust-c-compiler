@@ -105,6 +105,12 @@ fn tokenize(program_text: String) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
+fn print_tokens(tokens: Vec<Token>) {
+    for (i, token) in tokens.iter().enumerate() {
+        println!("{}\t| {:?}", i, token);
+    }
+}
+
 fn main() {
     let args = Args::parse();
     let content = read_file_contents(args.file_path);
@@ -115,9 +121,7 @@ fn main() {
 
     match tokenized_content {
         Ok(tokens) => {
-            for token in tokens {
-                println!("{:?}", token);
-            }
+            print_tokens(tokens);
         }
         Err(reason) => {
             println!("Encontered error during the tokenizing step: {}", reason);
