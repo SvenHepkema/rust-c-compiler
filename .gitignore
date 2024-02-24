@@ -2,3 +2,5 @@
 Cargo.lock
 /gcc-binaries
 /rust-binaries
+/generated-asm
+/obj
