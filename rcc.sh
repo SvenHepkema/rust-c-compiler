@@ -3,7 +3,7 @@ if [ $# -ne 1 ]; then
 	exit -1
 fi
 
-cargo run -- --file-path c-source/$1.c 
+cargo run -- c-source/$1.c generated-asm/$1.asm
 
 echo "="
 echo "="

@@ -5,8 +5,8 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    #[arg(short, long)]
-    file_path: String,
+    source_file: String,
+    output_file: String,
 }
 
 fn read_file_contents(file_path: String) -> String {
@@ -15,6 +15,10 @@ fn read_file_contents(file_path: String) -> String {
         Ok(content) => return content,
         Err(error) => panic!("Problem opening the file: {:?}", error),
     }
+}
+
+fn write_to_file(file_path: String, content: String) {
+    fs::write(file_path, content).unwrap();
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -65,7 +69,8 @@ fn tokenize(program_text: String) -> Result<Vec<Token>, String> {
                 s.push(c);
                 while let Some(&tmp) = it.peek() {
                     match tmp {
-                        '0'..='9' => { // Only works on integers for now
+                        '0'..='9' => {
+                            // Only works on integers for now
                             s.push(tmp);
                             it.next();
                         }
@@ -111,7 +116,6 @@ fn print_tokens(tokens: &Vec<Token>) {
     }
 }
 
-
 #[derive(Eq, PartialEq, Clone, Debug)]
 enum NodeType {
     Prog(String),
@@ -125,13 +129,6 @@ struct ParseNode {
     entry: NodeType,
     children: Vec<ParseNode>,
 }
-
-
-// ===========================
-// ===========================
-// Copied (and edited) from https://github.com/onehr/crust/commit/a708fbc04bf395425197a11ca1f0fde0ed49d865#diff-4a04259da480a6b794a2e947e4cc03eff4d1aa9330836f5b91cac68c5398193f
-// ===========================
-// ===========================
 
 impl ParseNode {
     fn new() -> ParseNode {
@@ -149,13 +146,12 @@ impl ParseNode {
     }
 }
 
-fn parse_function(
-    toks: &Vec<Token>,
-    pos: usize,
-) -> Result<(ParseNode, usize), String> {
+// Copied (and edited) from https://github.com/onehr/crust/commit/a708fbc04bf395425197a11ca1f0fde0ed49d865#diff-4a04259da480a6b794a2e947e4cc03eff4d1aa9330836f5b91cac68c5398193f
+fn parse_function(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), String> {
     let tok = &toks[pos];
-    if *tok != Token::Int { // TODO: Chnage this to Token::Keyword::Type and then check if int
-                            // float etc.
+    if *tok != Token::Int {
+        // TODO: Chnage this to Token::Keyword::Type and then check if int
+        // float etc.
         return Err(format!("Expected `int`, found {:?} at {}", toks[pos], pos));
     }
     let mut pos = pos + 1;
@@ -187,12 +183,15 @@ fn parse_function(
     let tmp = parse_statement(toks, pos);
     let mut stmt_node = ParseNode::new();
     match tmp {
-        Ok((a,b)) => {stmt_node = a; pos = b;},
-        Err(_) => {},
+        Ok((a, b)) => {
+            stmt_node = a;
+            pos = b;
+        }
+        Err(_) => {}
     }
 
     let tok = &toks[pos];
-    if *tok != Token::RCurly{
+    if *tok != Token::RCurly {
         return Err(format!("Expected `}}`, found {:?} at {}", toks[pos], pos));
     }
     pos = pos + 1;
@@ -204,21 +203,24 @@ fn parse_function(
     Ok((fn_node, pos))
 }
 
-fn parse_statement(
-    toks: &Vec<Token>,
-    pos: usize,
-) -> Result<(ParseNode, usize), String> {
+fn parse_statement(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), String> {
     let tok = &toks[pos];
     if *tok != Token::Return {
-        return Err(format!("Expected 'return', found {:?} at {}", toks[pos], pos));
+        return Err(format!(
+            "Expected 'return', found {:?} at {}",
+            toks[pos], pos
+        ));
     }
     let mut pos = pos + 1;
 
     let tmp = parse_expression(toks, pos);
     let mut exp_node = ParseNode::new();
     match tmp {
-        Ok((a,b)) => {exp_node = a; pos = b;},
-        Err(_) => {},
+        Ok((a, b)) => {
+            exp_node = a;
+            pos = b;
+        }
+        Err(_) => {}
     }
 
     let tok = &toks[pos];
@@ -234,10 +236,7 @@ fn parse_statement(
     Ok((stmt_node, pos))
 }
 
-fn parse_expression(
-    toks: &Vec<Token>,
-    pos: usize,
-) -> Result<(ParseNode, usize), String> {
+fn parse_expression(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), String> {
     let tok = &toks[pos];
     if *tok != Token::Integer(10) {
         panic!("Expected 'Integer(10)`, found {:?} at {}", toks[pos], pos);
@@ -262,15 +261,45 @@ fn parse_tokens(tokens: Vec<Token>) -> Result<ParseNode, String> {
         }
     })
 }
-//
-// ===========================
-// ===========================
-// ===========================
-// ===========================
+
+fn compile(tree: &ParseNode) -> String {
+    match &tree.entry {
+        NodeType::Prog(name) => {
+            format!("{}", name)
+        }
+        NodeType::Fn(name) => {
+            let function_name = match name.as_str() {
+                "main" => "_start",
+                _  => name,
+            };
+            format!(
+                "
+section     .text
+global      {}
+{}:
+{}
+",
+                function_name, function_name, compile(tree.children.get(0).expect("Function has no child"))
+            )
+        }
+        NodeType::Stmt => {
+            format!(
+                "
+mov eax, 1
+mov ebx, {}
+int 0x80",
+                compile(tree.children.get(0).expect("Statement has no child"))
+            )
+        }
+        NodeType::Exp(n) => {
+            format!("{}", n)
+        }
+    }
+}
 
 fn main() {
     let args = Args::parse();
-    let content = read_file_contents(args.file_path);
+    let content = read_file_contents(args.source_file);
 
     println!("\nProgram:\n");
     println!("{}", content);
@@ -278,14 +307,14 @@ fn main() {
     let tokenized_content = tokenize(content);
     let tokens: Vec<Token>;
 
-    // Probably better/cleaner/more idiomatic way to do this 
+    // Probably better/cleaner/more idiomatic way to do this
     match tokenized_content {
         Ok(lexed_tokens) => {
             tokens = lexed_tokens;
         }
         Err(reason) => {
             println!("Encountered error during the tokenizing step: {}", reason);
-            return
+            return;
         }
     }
 
@@ -295,17 +324,25 @@ fn main() {
     let parser_result = parse_tokens(tokens);
     let ast: ParseNode;
 
-    // Probably better/cleaner/more idiomatic way to do this 
+    // Probably better/cleaner/more idiomatic way to do this
     match parser_result {
         Ok(parsed_ast) => {
             ast = parsed_ast;
         }
         Err(reason) => {
             println!("Encountered error during the parser step: {}", reason);
-            return
+            return;
         }
     }
 
     println!("\nAST Tree:");
     ast.print(0);
+
+    let program = compile(&ast);
+
+    println!("\nGenerated Assembly:");
+    println!("{}", program);
+
+
+    write_to_file(args.output_file, program);
 }
