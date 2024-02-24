@@ -15,3 +15,8 @@ clean:
 	rm rust-binaries/* -f
 	rm gcc-binaries/* -f
 
+setup-dirs:
+	mkdir gcc-binaries
+	mkdir rust-binaries
+	mkdir generated-asm
+	mkdir obj
