@@ -16,7 +16,7 @@ struct Args {
 fn read_file_contents(file_path: String) -> String {
     let result = fs::read_to_string(file_path);
     match result {
-        Ok(content) => return content,
+        Ok(content) => content,
         Err(error) => panic!("Problem opening the file: {:?}", error),
     }
 }
@@ -32,36 +32,28 @@ fn main() {
     println!("\nProgram:\n");
     println!("{}", content);
 
-    let tokenized_content = tokenize(content);
-    let tokens: Vec<Token>;
-
-    // Probably better/cleaner/more idiomatic way to do this
-    match tokenized_content {
+    let tokens: Vec<Token> = match tokenize(content) {
         Ok(lexed_tokens) => {
-            tokens = lexed_tokens;
+            lexed_tokens
         }
         Err(reason) => {
             println!("Encountered error during the tokenizing step: {}", reason);
             return;
         }
-    }
+    };
 
     println!("\nTokens:");
     print_tokens(&tokens);
 
-    let parser_result = parse_tokens(tokens);
-    let ast: ParseNode;
-
-    // Probably better/cleaner/more idiomatic way to do this
-    match parser_result {
+    let ast: ParseNode = match parse_tokens(tokens) {
         Ok(parsed_ast) => {
-            ast = parsed_ast;
+            parsed_ast
         }
         Err(reason) => {
             println!("Encountered error during the parser step: {}", reason);
             return;
         }
-    }
+    };
 
     println!("\nAST Tree:");
     ast.print(0);

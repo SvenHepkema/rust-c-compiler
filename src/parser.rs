@@ -16,6 +16,12 @@ pub struct ParseNode {
     pub children: Vec<ParseNode>,
 }
 
+impl Default for ParseNode {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ParseNode {
     pub fn new() -> ParseNode {
         ParseNode {
@@ -32,7 +38,7 @@ impl ParseNode {
     }
 }
 
-fn parse_function(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), String> {
+fn parse_function(toks: &[Token], pos: usize) -> Result<(ParseNode, usize), String> {
     let tok = &toks[pos];
     if *tok != Token::Int {
         // TODO: Chnage this to Token::Keyword::Type and then check if int
@@ -45,41 +51,38 @@ fn parse_function(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), S
     if *tok != Token::Identifier("main".to_string()) {
         return Err(format!("Expected `main`, found {:?} at {}", toks[pos], pos));
     }
-    pos = pos + 1;
+    pos += 1;
 
     let tok = &toks[pos];
     if *tok != Token::LParenthesis {
         return Err(format!("Expected `(`, found {:?} at {}", toks[pos], pos));
     }
-    pos = pos + 1;
+    pos += 1;
 
     let tok = &toks[pos];
     if *tok != Token::RParenthesis {
         return Err(format!("Expected `)`, found {:?} at {}", toks[pos], pos));
     }
-    pos = pos + 1;
+    pos += 1;
 
     let tok = &toks[pos];
     if *tok != Token::LCurly {
         return Err(format!("Expected `{{`, found {:?} at {}", toks[pos], pos));
     }
-    pos = pos + 1;
+    pos += 1;
 
-    let tmp = parse_statement(toks, pos);
     let mut stmt_node = ParseNode::new();
-    match tmp {
-        Ok((a, b)) => {
-            stmt_node = a;
-            pos = b;
-        }
-        Err(_) => {}
+    let tmp = parse_statement(toks, pos);
+    if let Ok((a, b)) = tmp {
+        stmt_node = a;
+        pos = b;
     }
 
     let tok = &toks[pos];
     if *tok != Token::RCurly {
         return Err(format!("Expected `}}`, found {:?} at {}", toks[pos], pos));
     }
-    pos = pos + 1;
+    pos += 1;
 
     let mut fn_node = ParseNode::new();
     fn_node.entry = NodeType::Fn("main".to_string());
@@ -88,7 +91,7 @@ fn parse_function(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), S
     Ok((fn_node, pos))
 }
 
-fn parse_statement(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), String> {
+fn parse_statement(toks: &[Token], pos: usize) -> Result<(ParseNode, usize), String> {
     let tok = &toks[pos];
     if *tok != Token::Return {
         return Err(format!(
@@ -98,21 +101,18 @@ fn parse_statement(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), 
     }
     let mut pos = pos + 1;
 
-    let tmp = parse_expression(toks, pos);
     let mut exp_node = ParseNode::new();
-    match tmp {
-        Ok((a, b)) => {
-            exp_node = a;
-            pos = b;
-        }
-        Err(_) => {}
+    let tmp = parse_expression(toks, pos);
+    if let Ok((a, b)) = tmp {
+        exp_node = a;
+        pos = b;
     }
 
     let tok = &toks[pos];
     if *tok != Token::SemiColon {
         return Err(format!("Expected ';', found {:?} at {}", toks[pos], pos));
     }
-    pos = pos + 1;
+    pos += 1;
 
     let mut stmt_node = ParseNode::new();
     stmt_node.entry = NodeType::Stmt;
@@ -121,7 +121,7 @@ fn parse_statement(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), 
     Ok((stmt_node, pos))
 }
 
-fn parse_expression(toks: &Vec<Token>, pos: usize) -> Result<(ParseNode, usize), String> {
+fn parse_expression(toks: &[Token], pos: usize) -> Result<(ParseNode, usize), String> {
     let tok = &toks[pos];
     if *tok != Token::Integer(10) {
         panic!("Expected 'Integer(10)`, found {:?} at {}", toks[pos], pos);

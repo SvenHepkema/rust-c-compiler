@@ -88,7 +88,7 @@ pub fn tokenize(program_text: String) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
-pub fn print_tokens(tokens: &Vec<Token>) {
+pub fn print_tokens(tokens: &[Token]) {
     for (i, token) in tokens.iter().enumerate() {
         println!("{}\t| {:?}", i, token);
     }
