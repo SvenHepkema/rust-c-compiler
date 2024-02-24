@@ -1,22 +1,37 @@
-./$1/return-ten
-
-if [ $? -ne 10 ]; then
-	echo "Failed return-ten"
+if [ $# -ne 1 ] && [ $# -ne 3 ] ; then
+	echo "Wrong argument count. Either:"
+	echo $0 " <binary-directory-name>                                           <= test all binaries in dir"
+	echo $0 " <binary-directory-name> <binary-name> <expected-return-status>    <= test specific binary"
 	exit -1
 fi
 
-./$1/add-two-numbers
 
-if [ $? -ne 3 ]; then
-	echo "Failed add-two-numbers"
-	exit -1
+DIRECTORY=$1
+
+assert () {
+	./$DIRECTORY/$1
+	STATUS=$?
+
+	if [ $STATUS -ne $2 ]; then
+		echo "FAILED: " $1 " it returned " $STATUS " instead of " $2
+		exit -1
+	fi
+	echo "SUCCES: " $1
+}
+
+if [ $# -eq 3 ]  ; then
+	assert $2 $3
+	exit 0
 fi
 
-./$1/function-call
 
-if [ $? -ne 2 ]; then
-	echo "Failed function-call"
-	exit -1
-fi
+assert return-ten 10
+assert addition 11
+assert double-addition 14
+assert triple-addition 25
+assert subtraction 9 
+assert addition-subtraction 9
 
-echo "Passed all tests succesfully"
+
+echo "- Passed all tests succesfully"
+exit 0

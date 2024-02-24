@@ -1,13 +1,9 @@
-add-two-numbers: c-source/add-two-numbers.c
-	gcc $^ -o gcc-binaries/$@
+gcc-%: c-source/%.c
+	gcc $^ -o gcc-binaries/$*
 
-function-call: c-source/function-call.c
-	gcc $^ -o gcc-binaries/$@
-
-return-ten: c-source/return-ten.c
-	gcc $^ -o gcc-binaries/$@
-
-all-c-binaries: add-two-numbers function-call return-ten
+rcc-%: c-source/%.c
+	cargo run -- $^ generated-asm/$*.asm
+	make $*.asm
 
 %.asm: generated-asm/%.asm
 	nasm -f elf64 $^ -O0 -o obj/$*.o
@@ -17,3 +13,5 @@ clean:
 	rm generated-asm/* -f
 	rm obj/* -f
 	rm rust-binaries/* -f
+	rm gcc-binaries/* -f
+
