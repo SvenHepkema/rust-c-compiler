@@ -10,6 +10,21 @@ Run the following command to setup the directory structure:
 make setup-dirs
 ```
 
+# Run
+
+To compile a C file to assembly with the compiler, run:
+
+```sh
+cargo run -- <input-file-path> <output-file-path>
+```
+
+To compile any of the C files in the [c-source](c-source) directory to a binary and run it, run:
+
+```sh
+make rcc-<c-file-name-without-extension> && ./rust-binaries/<c-file-name-without-extension>
+```
+
+
 # Testing
 
 There are scripts to compile the testing C source files. To compile all source files:
