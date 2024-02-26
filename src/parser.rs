@@ -8,6 +8,7 @@ pub enum NodeType {
     Fn(String),
     Stmt,
     Exp(i32),
+    UnExp(Token),
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -126,6 +127,13 @@ fn parse_expression(toks: &[Token], pos: usize) -> Result<(ParseNode, usize), St
     let mut exp_node = ParseNode::new();
 
     match *tok {
+        Token::Minus => {
+            exp_node.entry = NodeType::UnExp(Token::Minus);
+            let (child_node, pos) = parse_expression(toks, pos + 1)?;
+            exp_node.children.push(child_node);
+
+            return Ok((exp_node, pos));
+        }
         Token::Integer(x) => {
             exp_node.entry = NodeType::Exp(x);
         }

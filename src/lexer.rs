@@ -10,6 +10,8 @@ pub enum Token {
     RParenthesis,
     LCurly,
     RCurly,
+    Plus,
+    Minus,
     SemiColon,
 }
 
@@ -58,6 +60,14 @@ pub fn tokenize(program_text: String) -> Result<Vec<Token>, String> {
                     }
                 }
                 tokens.push(Token::Integer(s.parse::<i32>().unwrap()));
+            }
+            '+' => {
+                it.next();
+                tokens.push(Token::Plus);
+            }
+            '-' => {
+                it.next();
+                tokens.push(Token::Minus);
             }
             '(' => {
                 it.next();
