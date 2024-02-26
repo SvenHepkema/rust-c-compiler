@@ -7,7 +7,7 @@ pub enum NodeType {
     Prog(String),
     Fn(String),
     Stmt,
-    Exp(i64),
+    Exp(i32),
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -123,13 +123,18 @@ fn parse_statement(toks: &[Token], pos: usize) -> Result<(ParseNode, usize), Str
 
 fn parse_expression(toks: &[Token], pos: usize) -> Result<(ParseNode, usize), String> {
     let tok = &toks[pos];
-    if *tok != Token::Integer(10) {
-        panic!("Expected 'Integer(10)`, found {:?} at {}", toks[pos], pos);
-    }
-    let pos = pos + 1;
-
     let mut exp_node = ParseNode::new();
-    exp_node.entry = NodeType::Exp(10);
+
+    match *tok {
+        Token::Integer(x) => {
+            exp_node.entry = NodeType::Exp(x);
+        }
+        _ => {
+            panic!("Expected integer but found {:?} at {}", toks[pos], pos);
+        }
+    }
+
+    let pos = pos + 1;
 
     Ok((exp_node, pos))
 }

@@ -26,6 +26,7 @@ fi
 
 
 assert return-ten 10
+assert return-hundred 100
 assert addition 11
 assert double-addition 14
 assert triple-addition 25
