@@ -29,9 +29,9 @@ assert return-ten 10
 assert return-hundred 100
 assert return-negative-one 255 # Exit codes are 0 to 255, so -1 gets wrapped around
 assert addition 11
+assert subtraction 9 
 assert double-addition 14
 assert triple-addition 25
-assert subtraction 9 
 assert addition-subtraction 9
 
 

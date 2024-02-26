@@ -44,7 +44,50 @@ neg eax",
             }
             _ => {
                 // FIX this is ugly should be done by typesystme, it should not be possible
-                // to create a unary node with a non unary operator token at all
+                // to create a binary node with a non binary operator token at all
+                panic!("Invalid unary operator type: {:?}", t);
+            }
+        },
+        NodeType::BiExp(t) => match t {
+            Token::Plus => {
+                format!(
+                    "{}
+mov ebx, eax
+{}
+add eax, ebx",
+                    generate(
+                        tree.children
+                            .get(1)
+                            .expect("Binary operator '+' has no second child.")
+                    ),
+                    generate(
+                        tree.children
+                            .first()
+                            .expect("Binary operator '+' has no childs.")
+                    )
+                )
+            }
+            Token::Minus => {
+                format!(
+                    "{}
+mov ebx, eax
+{}
+sub eax, ebx",
+                    generate(
+                        tree.children
+                            .get(1)
+                            .expect("Binary operator '-' has no second child.")
+                    ),
+                    generate(
+                        tree.children
+                            .first()
+                            .expect("Binary operator '-' has no childs.")
+                    )
+                )
+            }
+            _ => {
+                // FIX this is ugly should be done by typesystme, it should not be possible
+                // to create a binary node with a non binary operator token at all
                 panic!("Invalid unary operator type: {:?}", t);
             }
         },

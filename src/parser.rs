@@ -9,6 +9,7 @@ pub enum NodeType {
     Stmt,
     Exp(i32),
     UnExp(Token),
+    BiExp(Token),
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -127,16 +128,46 @@ fn parse_expression(toks: &[Token], pos: usize) -> Result<(ParseNode, usize), St
     let mut exp_node = ParseNode::new();
 
     match *tok {
-        Token::Minus => {
-            exp_node.entry = NodeType::UnExp(Token::Minus);
-            let (child_node, pos) = parse_expression(toks, pos + 1)?;
-            exp_node.children.push(child_node);
+        Token::Minus | Token::Plus => match toks[pos + 1] {
+            Token::Integer(_) => {
+                exp_node.entry = NodeType::BiExp(toks[pos].clone());
 
-            return Ok((exp_node, pos));
-        }
-        Token::Integer(x) => {
-            exp_node.entry = NodeType::Exp(x);
-        }
+                exp_node.children.push(match toks[pos - 1] {
+                    Token::Integer(x) => ParseNode {
+                        entry: NodeType::Exp(x),
+                        children: vec![],
+                    },
+                    _ => {
+                        panic!(
+                            "Expected integer as left child but found {:?} at {}",
+                            toks[pos], pos
+                        );
+                    }
+                });
+
+                let (right_child_node, pos) = parse_expression(toks, pos + 1)?;
+                exp_node.children.push(right_child_node);
+
+                return Ok((exp_node, pos));
+            }
+            _ => {
+                // Unary minus
+                exp_node.entry = NodeType::UnExp(Token::Minus);
+                let (child_node, pos) = parse_expression(toks, pos + 1)?;
+                exp_node.children.push(child_node);
+
+                return Ok((exp_node, pos));
+            }
+        },
+        Token::Integer(x) => match toks[pos + 1] {
+            Token::Minus | Token::Plus => {
+                let (exp_node, pos) = parse_expression(toks, pos + 1)?;
+                return Ok((exp_node, pos));
+            }
+            _ => {
+                exp_node.entry = NodeType::Exp(x);
+            }
+        },
         _ => {
             panic!("Expected integer but found {:?} at {}", toks[pos], pos);
         }
