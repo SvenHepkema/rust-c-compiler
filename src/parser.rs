@@ -35,13 +35,6 @@ impl ParseNode {
         }
     }
 
-    pub fn print(&self, indent: usize) {
-        println!("{}| {:?}", "  ".repeat(indent), self.entry);
-        for child in self.children.iter() {
-            child.print(indent + 1);
-        }
-    }
-
     pub fn get_child(&self, child: usize) -> &ParseNode {
         self.children.get(child).expect(&format!(
             "{:?} has no {} child, it has {} children",
@@ -50,6 +43,17 @@ impl ParseNode {
             self.children.len()
         ))
     }
+}
+
+fn print_parse_node_tree(node: &ParseNode, indent: usize) {
+    println!("{}| {:?}", "  ".repeat(indent), node.entry);
+    for child in node.children.iter() {
+        print_parse_node_tree(child, indent);
+    }
+}
+
+pub fn print_ast(node: &ParseNode) {
+    print_parse_node_tree(node, 0)
 }
 
 fn convert_token_to_unary_op(token: &Token) -> Result<UnaryOp, String> {

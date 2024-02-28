@@ -2,7 +2,7 @@ use std::fs;
 
 use rust_c_compiler::generator::{generate_assembly, generate_operations, print_operations};
 use rust_c_compiler::lexer::{print_tokens, tokenize, Token};
-use rust_c_compiler::parser::{parse_tokens, ParseNode};
+use rust_c_compiler::parser::{parse_tokens, ParseNode, print_ast};
 
 use clap::Parser;
 
@@ -52,7 +52,7 @@ fn main() {
     };
 
     println!("\nAST Tree:");
-    ast.print(0);
+    print_ast(&ast);
 
     let operations = generate_operations(&ast);
     print_operations(&operations);
