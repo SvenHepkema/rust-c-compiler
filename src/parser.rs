@@ -36,12 +36,10 @@ impl ParseNode {
     }
 
     pub fn get_child(&self, child: usize) -> &ParseNode {
-        self.children.get(child).expect(&format!(
-            "{:?} has no {} child, it has {} children",
+        self.children.get(child).unwrap_or_else(|| panic!("{:?} has no {} child, it has {} children",
             self,
             child,
-            self.children.len()
-        ))
+            self.children.len()))
     }
 }
 
@@ -151,25 +149,25 @@ fn parse_expression(tokens: &[Token], pos: usize) -> Result<(ParseNode, usize), 
 
                 let (right_child_node, pos) = parse_expression(tokens, pos + 1)?;
 
-                return Ok((
+                Ok((
                     ParseNode {
                         entry: NodeType::BinaryOp(convert_token_to_binary_op(token)?),
                         children: vec![left_child_node, right_child_node],
                     },
                     pos,
-                ));
+                ))
             }
             _ => {
                 // Previous token is not an integer, so we are dealing with a unary operation
                 let (child_node, pos) = parse_expression(tokens, pos + 1)?;
 
-                return Ok((
+                Ok((
                     ParseNode {
                         entry: NodeType::UnaryOp(convert_token_to_unary_op(token)?),
                         children: vec![child_node],
                     },
                     pos,
-                ));
+                ))
             }
         },
         Token::Integer(x) => match tokens[pos + 1] {

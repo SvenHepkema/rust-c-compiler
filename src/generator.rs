@@ -68,12 +68,6 @@ fn join_two(mut first: Vec<Asm>, second: &mut Vec<Asm>) -> Vec<Asm> {
     first
 }
 
-fn join_three(mut first: Vec<Asm>, second: &mut Vec<Asm>, third: &mut Vec<Asm>) -> Vec<Asm> {
-    first.append(second);
-    first.append(third);
-    first
-}
-
 fn join_four(
     mut first: Vec<Asm>,
     second: &mut Vec<Asm>,
@@ -107,7 +101,7 @@ pub fn generate_operations(node: &ParseNode) -> Vec<Asm> {
             ],
         ),
         NodeType::Const(x) => {
-            vec![Asm::Mov(Param::Eax, Param::Constant(x.clone()))]
+            vec![Asm::Mov(Param::Eax, Param::Constant(*x))]
         }
         NodeType::UnaryOp(t) => match t {
             UnaryOp::Minus => join_two(
@@ -147,4 +141,3 @@ pub fn generate_assembly(operations: &Vec<Asm>) -> String {
 
     strings.join("\n")
 }
-
