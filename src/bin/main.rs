@@ -1,6 +1,6 @@
 use std::fs;
 
-use rust_c_compiler::generator::generate;
+use rust_c_compiler::generator::{generate_assembly, generate_operations, print_operations};
 use rust_c_compiler::lexer::{print_tokens, tokenize, Token};
 use rust_c_compiler::parser::{parse_tokens, ParseNode};
 
@@ -33,9 +33,7 @@ fn main() {
     println!("{}", content);
 
     let tokens: Vec<Token> = match tokenize(content) {
-        Ok(lexed_tokens) => {
-            lexed_tokens
-        }
+        Ok(lexed_tokens) => lexed_tokens,
         Err(reason) => {
             println!("Encountered error during the tokenizing step: {}", reason);
             return;
@@ -46,9 +44,7 @@ fn main() {
     print_tokens(&tokens);
 
     let ast: ParseNode = match parse_tokens(tokens) {
-        Ok(parsed_ast) => {
-            parsed_ast
-        }
+        Ok(parsed_ast) => parsed_ast,
         Err(reason) => {
             println!("Encountered error during the parser step: {}", reason);
             return;
@@ -58,10 +54,13 @@ fn main() {
     println!("\nAST Tree:");
     ast.print(0);
 
-    let program = generate(&ast);
+    let operations = generate_operations(&ast);
+    print_operations(&operations);
+
+    let assembly = generate_assembly(&operations);
 
     println!("\nGenerated Assembly:");
-    println!("{}", program);
+    println!("{}", assembly);
 
-    write_to_file(args.output_file, program);
+    write_to_file(args.output_file, assembly);
 }

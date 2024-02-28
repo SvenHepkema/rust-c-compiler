@@ -2,13 +2,13 @@ use crate::lexer::Token;
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum UnaryOp {
-    Minus
+    Minus,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum BinaryOp {
     Plus,
-    Minus
+    Minus,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -41,30 +41,35 @@ impl ParseNode {
             child.print(indent + 1);
         }
     }
+
+    pub fn get_child(&self, child: usize) -> &ParseNode {
+        self.children.get(child).expect(&format!(
+            "{:?} has no {} child, it has {} children",
+            self,
+            child,
+            self.children.len()
+        ))
+    }
 }
 
 fn convert_token_to_unary_op(token: &Token) -> Result<UnaryOp, String> {
     match token {
-        Token::Minus => {
-            Ok(UnaryOp::Minus)
-        }
-        _ => {
-            Err(format!("The token {:?} cannot be converted to a unary operation.", token))
-        }
+        Token::Minus => Ok(UnaryOp::Minus),
+        _ => Err(format!(
+            "The token {:?} cannot be converted to a unary operation.",
+            token
+        )),
     }
 }
 
 fn convert_token_to_binary_op(token: &Token) -> Result<BinaryOp, String> {
     match token {
-        Token::Minus => {
-            Ok(BinaryOp::Minus)
-        }
-        Token::Plus => {
-            Ok(BinaryOp::Plus)
-        }
-        _ => {
-            Err(format!("The token {:?} cannot be converted to a unary operation.", token))
-        }
+        Token::Minus => Ok(BinaryOp::Minus),
+        Token::Plus => Ok(BinaryOp::Plus),
+        _ => Err(format!(
+            "The token {:?} cannot be converted to a unary operation.",
+            token
+        )),
     }
 }
 
@@ -134,7 +139,8 @@ fn parse_expression(tokens: &[Token], pos: usize) -> Result<(ParseNode, usize), 
                     _ => {
                         panic!(
                             "Expected integer as left child but found {:?} at {}",
-                            tokens.get(pos), pos
+                            tokens.get(pos),
+                            pos
                         );
                     }
                 };
