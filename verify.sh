@@ -33,6 +33,7 @@ assert subtraction 9
 assert double-addition 14
 assert triple-addition 25
 assert addition-subtraction 9
+assert multiplication 20
 
 
 echo "- Passed all tests succesfully"

@@ -12,6 +12,7 @@ pub enum Token {
     RCurly,
     Plus,
     Minus,
+    Multiplication,
     SemiColon,
 }
 
@@ -68,6 +69,10 @@ pub fn tokenize(program_text: String) -> Result<Vec<Token>, String> {
             '-' => {
                 it.next();
                 tokens.push(Token::Minus);
+            }
+            '*' => {
+                it.next();
+                tokens.push(Token::Multiplication);
             }
             '(' => {
                 it.next();

@@ -29,6 +29,7 @@ pub enum Asm {
     Neg(Param),
     Add(Param, Param),
     Sub(Param, Param),
+    Mul(Param, Param),
 }
 
 impl Asm {
@@ -51,6 +52,9 @@ impl Asm {
             }
             Asm::Sub(first, second) => {
                 format!("sub {}, {}", first.as_string(), second.as_string())
+            }
+            Asm::Mul(first, second) => {
+                format!("imul {}, {}", first.as_string(), second.as_string())
             }
         }
     }
@@ -121,6 +125,12 @@ pub fn generate_operations(node: &ParseNode) -> Vec<Asm> {
                 &mut vec![Asm::Mov(Param::Ebx, Param::Eax)],
                 &mut generate_operations(node.get_child(0)),
                 &mut vec![Asm::Add(Param::Eax, Param::Ebx)],
+            ),
+            BinaryOp::Multiplication=> join_four(
+                generate_operations(node.get_child(1)),
+                &mut vec![Asm::Mov(Param::Ebx, Param::Eax)],
+                &mut generate_operations(node.get_child(0)),
+                &mut vec![Asm::Mul(Param::Eax, Param::Ebx)],
             ),
         },
         _ => {

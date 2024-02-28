@@ -9,6 +9,7 @@ pub enum UnaryOp {
 pub enum BinaryOp {
     Plus,
     Minus,
+    Multiplication,
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -68,8 +69,9 @@ fn convert_token_to_binary_op(token: &Token) -> Result<BinaryOp, String> {
     match token {
         Token::Minus => Ok(BinaryOp::Minus),
         Token::Plus => Ok(BinaryOp::Plus),
+        Token::Multiplication=> Ok(BinaryOp::Multiplication),
         _ => Err(format!(
-            "The token {:?} cannot be converted to a unary operation.",
+            "The token {:?} cannot be converted to a binary operation.",
             token
         )),
     }
@@ -131,7 +133,7 @@ fn parse_expression(tokens: &[Token], pos: usize) -> Result<(ParseNode, usize), 
     let token = &tokens[pos];
 
     match *token {
-        Token::Minus | Token::Plus => match tokens[pos - 1] {
+        Token::Minus | Token::Plus | Token::Multiplication => match tokens[pos - 1] {
             Token::Integer(_) => {
                 let left_child_node = match tokens[pos - 1] {
                     Token::Integer(x) => ParseNode {
@@ -139,11 +141,11 @@ fn parse_expression(tokens: &[Token], pos: usize) -> Result<(ParseNode, usize), 
                         children: vec![],
                     },
                     _ => {
-                        panic!(
+                        return Err(format!(
                             "Expected integer as left child but found {:?} at {}",
                             tokens.get(pos),
                             pos
-                        );
+                        ));
                     }
                 };
 
@@ -171,11 +173,11 @@ fn parse_expression(tokens: &[Token], pos: usize) -> Result<(ParseNode, usize), 
             }
         },
         Token::Integer(x) => match tokens[pos + 1] {
-            Token::Minus | Token::Plus => Ok(parse_expression(tokens, pos + 1)?),
+            Token::Minus | Token::Plus | Token::Multiplication => Ok(parse_expression(tokens, pos + 1)?),
             _ => Ok((ParseNode::new_childless(NodeType::Const(x)), pos + 1)),
         },
         _ => {
-            panic!("Expected integer but found {:?} at {}", tokens[pos], pos);
+            return Err(format!("Unexpected token found during expression parsing at {:?} at {}", tokens[pos], pos));
         }
     }
 }
