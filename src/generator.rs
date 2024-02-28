@@ -10,7 +10,7 @@ pub enum Param {
 }
 
 impl Param {
-    pub fn as_string(&self) -> String {
+    fn as_string(&self) -> String {
         match self {
             Param::Eax => "eax".to_string(),
             Param::Ebx => "ebx".to_string(),
@@ -32,7 +32,7 @@ pub enum Asm {
 }
 
 impl Asm {
-    pub fn as_string(&self) -> String {
+    fn as_string(&self) -> String {
         match self {
             Asm::FunctionRef(name) => {
                 let mut line = name.clone();
@@ -63,18 +63,18 @@ pub fn print_operations(operations: &Vec<Asm>) {
     }
 }
 
-pub fn join_two(mut first: Vec<Asm>, second: &mut Vec<Asm>) -> Vec<Asm> {
+fn join_two(mut first: Vec<Asm>, second: &mut Vec<Asm>) -> Vec<Asm> {
     first.append(second);
     first
 }
 
-pub fn join_three(mut first: Vec<Asm>, second: &mut Vec<Asm>, third: &mut Vec<Asm>) -> Vec<Asm> {
+fn join_three(mut first: Vec<Asm>, second: &mut Vec<Asm>, third: &mut Vec<Asm>) -> Vec<Asm> {
     first.append(second);
     first.append(third);
     first
 }
 
-pub fn join_four(
+fn join_four(
     mut first: Vec<Asm>,
     second: &mut Vec<Asm>,
     third: &mut Vec<Asm>,
@@ -147,3 +147,4 @@ pub fn generate_assembly(operations: &Vec<Asm>) -> String {
 
     strings.join("\n")
 }
+
