@@ -1,5 +1,4 @@
-use crate::lexer::Token;
-use crate::parser::{NodeType, ParseNode};
+use crate::parser::{NodeType, ParseNode, UnaryOp, BinaryOp};
 
 pub fn generate(tree: &ParseNode) -> String {
     match &tree.entry {
@@ -31,25 +30,20 @@ int 0x80",
                 generate(tree.children.first().expect("Statement has no child"))
             )
         }
-        NodeType::Exp(n) => {
+        NodeType::Const(n) => {
             format!("mov eax, {}", n)
         }
-        NodeType::UnExp(t) => match t {
-            Token::Minus => {
+        NodeType::UnaryOp(t) => match t {
+            UnaryOp::Minus => {
                 format!(
                     "{}
 neg eax",
                     generate(tree.children.first().expect("Unary operator has no child."))
                 )
             }
-            _ => {
-                // FIX this is ugly should be done by typesystme, it should not be possible
-                // to create a binary node with a non binary operator token at all
-                panic!("Invalid unary operator type: {:?}", t);
-            }
         },
-        NodeType::BiExp(t) => match t {
-            Token::Plus => {
+        NodeType::BinaryOp(t) => match t {
+            BinaryOp::Plus => {
                 format!(
                     "{}
 mov ebx, eax
@@ -67,7 +61,7 @@ add eax, ebx",
                     )
                 )
             }
-            Token::Minus => {
+            BinaryOp::Minus => {
                 format!(
                     "{}
 mov ebx, eax
@@ -84,11 +78,6 @@ sub eax, ebx",
                             .expect("Binary operator '-' has no childs.")
                     )
                 )
-            }
-            _ => {
-                // FIX this is ugly should be done by typesystme, it should not be possible
-                // to create a binary node with a non binary operator token at all
-                panic!("Invalid unary operator type: {:?}", t);
             }
         },
     }
