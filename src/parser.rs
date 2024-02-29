@@ -187,9 +187,9 @@ fn parse_expression(tokens: &[Token], mut pos: usize) -> Result<(ParseNode, usiz
     while *token != Token::SemiColon {
         let node: ParseNode;
         if token.is_operation() {
-            if !previous_was_value && token.is_operation() {
+            if !previous_was_value { // Must be unitary
                 node = ParseNode::new(NodeType::UnaryOp(convert_token_to_unary_op(token)?));
-            } else {
+            } else { // Must be binary
                 node = ParseNode::new(NodeType::BinaryOp(convert_token_to_binary_op(token)?));
 
                 let precedence = get_precedence(&node);
