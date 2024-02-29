@@ -68,6 +68,24 @@ impl Asm {
     }
 }
 
+trait AddSelfToAsmVec {
+    fn add_self_to(&self, assembly: &mut Vec<Asm>);
+}
+
+impl AddSelfToAsmVec for Asm {
+    fn add_self_to(&self, assembly: &mut Vec<Asm>) {
+        assembly.push(self.clone());
+    }
+}
+
+impl AddSelfToAsmVec for Vec<Asm> {
+    fn add_self_to(&self, assembly: &mut Vec<Asm>) {
+        for asm in self {
+            asm.add_self_to(assembly);
+        }
+    }
+}
+
 pub fn print_operations(operations: &Vec<Asm>) {
     println!("\nGenerated Operations:");
     for operation in operations {
@@ -80,7 +98,7 @@ macro_rules! join_asm  {
         {
             let mut result: Vec<Asm> = Vec::new();
             $ (
-                result.append($x);
+                $x.add_self_to(&mut result);
             )*
             result
         }
@@ -95,45 +113,45 @@ pub fn generate_operations(node: &ParseNode) -> Vec<Asm> {
                 _ => name.clone(),
             };
             join_asm!(
-                &mut vec![Asm::FunctionRef(function_name)],
-                &mut generate_operations(node.get_child(0))
+                Asm::FunctionRef(function_name.clone()),
+                generate_operations(node.get_child(0))
             )
         }
         NodeType::Stmt => join_asm!(
-            &mut generate_operations(node.get_child(0)),
-            &mut vec![
-                Asm::Mov(Param::Rbx, Param::Rax),
-                Asm::Mov(Param::Rax, Param::Constant(1)),
-                Asm::OSInterrupt
-            ]
+            generate_operations(node.get_child(0)),
+            Asm::Mov(Param::Rbx, Param::Rax),
+            Asm::Mov(Param::Rax, Param::Constant(1)),
+            Asm::OSInterrupt
         ),
         NodeType::Const(x) => {
             vec![Asm::Mov(Param::Rax, Param::Constant(*x))]
         }
         NodeType::UnaryOp(t) => match t {
-            UnaryOp::Minus => join_asm!(
-                &mut generate_operations(node.get_child(0)),
-                &mut vec![Asm::Neg(Param::Rax)]
-            ),
+            UnaryOp::Minus => {
+                join_asm!(generate_operations(node.get_child(0)), Asm::Neg(Param::Rax))
+            }
         },
         NodeType::BinaryOp(t) => match t {
             BinaryOp::Minus => join_asm!(
-                &mut generate_operations(node.get_child(1)),
-                &mut vec![Asm::Push(Param::Rax)],
-                &mut generate_operations(node.get_child(0)),
-                &mut vec![Asm::Pop(Param::Rbx), Asm::Sub(Param::Rax, Param::Rbx)]
+                generate_operations(node.get_child(1)),
+                Asm::Push(Param::Rax),
+                generate_operations(node.get_child(0)),
+                Asm::Pop(Param::Rbx),
+                Asm::Sub(Param::Rax, Param::Rbx)
             ),
             BinaryOp::Plus => join_asm!(
-                &mut generate_operations(node.get_child(1)),
-                &mut vec![Asm::Push(Param::Rax)],
-                &mut generate_operations(node.get_child(0)),
-                &mut vec![Asm::Pop(Param::Rbx), Asm::Add(Param::Rax, Param::Rbx)]
+                generate_operations(node.get_child(1)),
+                Asm::Push(Param::Rax),
+                generate_operations(node.get_child(0)),
+                Asm::Pop(Param::Rbx),
+                Asm::Add(Param::Rax, Param::Rbx)
             ),
             BinaryOp::Multiplication => join_asm!(
-                &mut generate_operations(node.get_child(1)),
-                &mut vec![Asm::Push(Param::Rax)],
-                &mut generate_operations(node.get_child(0)),
-                &mut vec![Asm::Pop(Param::Rbx), Asm::Mul(Param::Rax, Param::Rbx)]
+                generate_operations(node.get_child(1)),
+                Asm::Push(Param::Rax),
+                generate_operations(node.get_child(0)),
+                Asm::Pop(Param::Rbx),
+                Asm::Mul(Param::Rax, Param::Rbx)
             ),
         },
         _ => {
