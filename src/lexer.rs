@@ -16,6 +16,15 @@ pub enum Token {
     SemiColon,
 }
 
+impl Token {
+    pub fn is_operation(&self) -> bool {
+        match self {
+            Token::Plus | Token::Minus | Token::Multiplication => true,
+            _ => false,
+        }
+    }
+}
+
 pub fn tokenize(program_text: String) -> Result<Vec<Token>, String> {
     let mut tokens = vec![];
     let mut it = program_text.chars().peekable();

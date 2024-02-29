@@ -36,7 +36,3 @@ assert addition-subtraction 9
 assert multiplication 20
 assert addition-multiplication 23
 assert multiplication-addition 32
-
-
-echo "- Passed all tests succesfully"
-exit 0
