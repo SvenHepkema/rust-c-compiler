@@ -18,10 +18,7 @@ pub enum Token {
 
 impl Token {
     pub fn is_operation(&self) -> bool {
-        match self {
-            Token::Plus | Token::Minus | Token::Multiplication => true,
-            _ => false,
-        }
+        matches!(self, Token::Plus | Token::Minus | Token::Multiplication)
     }
 }
 
