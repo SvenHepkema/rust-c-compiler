@@ -37,17 +37,28 @@ impl ParseNode {
     }
 
     pub fn get_child(&self, child: usize) -> &ParseNode {
-        self.children.get(child).unwrap_or_else(|| panic!("{:?} has no {} child, it has {} children",
-            self,
-            child,
-            self.children.len()))
+        self.children.get(child).unwrap_or_else(|| {
+            panic!(
+                "{:?} has no {} child, it has {} children",
+                self,
+                child,
+                self.children.len()
+            )
+        })
+    }
+
+    pub fn is_operation(&self) -> bool {
+        match self.entry {
+            NodeType::UnaryOp(_) | NodeType::BinaryOp(_) => true,
+            _ => false,
+        }
     }
 }
 
 fn print_parse_node_tree(node: &ParseNode, indent: usize) {
     println!("{}| {:?}", "  ".repeat(indent), node.entry);
     for child in node.children.iter() {
-        print_parse_node_tree(child, indent);
+        print_parse_node_tree(child, indent + 1);
     }
 }
 
@@ -69,7 +80,7 @@ fn convert_token_to_binary_op(token: &Token) -> Result<BinaryOp, String> {
     match token {
         Token::Minus => Ok(BinaryOp::Minus),
         Token::Plus => Ok(BinaryOp::Plus),
-        Token::Multiplication=> Ok(BinaryOp::Multiplication),
+        Token::Multiplication => Ok(BinaryOp::Multiplication),
         _ => Err(format!(
             "The token {:?} cannot be converted to a binary operation.",
             token
@@ -129,57 +140,173 @@ fn parse_statement(tokens: &[Token], mut pos: usize) -> Result<(ParseNode, usize
     ))
 }
 
-fn parse_expression(tokens: &[Token], pos: usize) -> Result<(ParseNode, usize), String> {
+fn parse_literal(tokens: &[Token], pos: usize) -> Result<(ParseNode, usize), String> {
     let token = &tokens[pos];
 
     match *token {
-        Token::Minus | Token::Plus | Token::Multiplication => match tokens[pos - 1] {
-            Token::Integer(_) => {
-                let left_child_node = match tokens[pos - 1] {
-                    Token::Integer(x) => ParseNode {
-                        entry: NodeType::Const(x),
-                        children: vec![],
-                    },
-                    _ => {
-                        return Err(format!(
-                            "Expected integer as left child but found {:?} at {}",
-                            tokens.get(pos),
-                            pos
-                        ));
+        Token::Integer(x) => Ok((
+            ParseNode {
+                entry: NodeType::Const(x),
+                children: vec![],
+            },
+            pos,
+        )),
+        _ => Err(format!(
+            "Expected token to convert to literal but found {:?} at {}",
+            tokens.get(pos),
+            pos
+        )),
+    }
+}
+
+//fn parse_expression(tokens: &[Token], pos: usize) -> Result<(ParseNode, usize), String> {
+//    let token = &tokens[pos];
+//
+//    match *token {
+//        Token::Minus | Token::Plus | Token::Multiplication => match tokens[pos - 1] {
+//            Token::Integer(_) => {
+//                let left_child_node = match tokens[pos - 1] {
+//                    Token::Integer(x) => ParseNode {
+//                        entry: NodeType::Const(x),
+//                        children: vec![],
+//                    },
+//                    _ => {
+//                        return Err(format!(
+//                            "Expected integer as left child but found {:?} at {}",
+//                            tokens.get(pos),
+//                            pos
+//                        ));
+//                    }
+//                };
+//
+//                let (right_child_node, pos) = parse_expression(tokens, pos + 1)?;
+//
+//                Ok((
+//                    ParseNode {
+//                        entry: NodeType::BinaryOp(convert_token_to_binary_op(token)?),
+//                        children: vec![left_child_node, right_child_node],
+//                    },
+//                    pos,
+//                ))
+//            }
+//            _ => {
+//                // Previous token is not an integer, so we are dealing with a unary operation
+//                let (child_node, pos) = parse_expression(tokens, pos + 1)?;
+//
+//                Ok((
+//                    ParseNode {
+//                        entry: NodeType::UnaryOp(convert_token_to_unary_op(token)?),
+//                        children: vec![child_node],
+//                    },
+//                    pos,
+//                ))
+//            }
+//        },
+//        Token::Integer(x) => match tokens[pos + 1] {
+//            Token::Minus | Token::Plus | Token::Multiplication => {
+//                Ok(parse_literal(tokens, pos + 1)?)
+//            }
+//            _ => Ok((ParseNode::new_childless(NodeType::Const(x)), pos + 1)),
+//        },
+//        _ => {
+//            return Err(format!(
+//                "Unexpected token found during expression parsing at {:?} at {}",
+//                tokens[pos], pos
+//            ));
+//        }
+//    }
+//}
+
+fn get_precedence(token: &Token) -> u32 {
+    match token {
+        Token::Multiplication => 2,
+        Token::Plus | Token::Minus => 1,
+        _ => panic!("Could not get precedence of a non operator token"),
+    }
+}
+
+fn parse_expr_token(token: &Token) -> ParseNode {
+    match token {
+        Token::Integer(x) => ParseNode {
+            entry: NodeType::Const(*x),
+            children: vec![],
+        },
+        Token::Multiplication => ParseNode {
+            entry: NodeType::BinaryOp(BinaryOp::Multiplication),
+            children: vec![],
+        },
+        Token::Plus => ParseNode {
+            entry: NodeType::BinaryOp(BinaryOp::Plus),
+            children: vec![],
+        },
+        Token::Minus => ParseNode {
+            entry: NodeType::BinaryOp(BinaryOp::Minus),
+            children: vec![],
+        },
+        _ => panic!("Parse expr token function could not parse token.",),
+    }
+}
+
+fn parse_output_stack(output_stack: &[&Token]) -> Result<ParseNode, String> {
+    let mut stack: Vec<ParseNode> = vec![];
+
+    println!("Parse output stack: {:?}", output_stack);
+
+    for token in output_stack {
+        let mut parsed = parse_expr_token(token);
+
+        if parsed.is_operation() {
+            parsed.children.push(stack.remove(stack.len() - 2));
+            parsed.children.push(stack.remove(stack.len() - 1));
+            //parsed.children.extend_from_slice(&mut stack.drain(stack.len()-2..).as_slice());
+        }
+
+        stack.push(parsed)
+    }
+
+    Ok(stack.remove(0))
+}
+
+// Source: https://en.wikipedia.org/wiki/Shunting_yard_algorithm
+fn parse_expression(tokens: &[Token], mut pos: usize) -> Result<(ParseNode, usize), String> {
+    let mut token = &tokens[pos];
+
+    let mut output_stack: Vec<&Token> = vec![];
+    let mut operator_stack: Vec<&Token> = vec![];
+
+    while *token != Token::SemiColon {
+        match *token {
+            Token::Minus | Token::Plus | Token::Multiplication => {
+                let precedence = get_precedence(token);
+                if precedence
+                    < match operator_stack.first() {
+                        Some(x) => get_precedence(x),
+                        None => 0,
                     }
-                };
-
-                let (right_child_node, pos) = parse_expression(tokens, pos + 1)?;
-
-                Ok((
-                    ParseNode {
-                        entry: NodeType::BinaryOp(convert_token_to_binary_op(token)?),
-                        children: vec![left_child_node, right_child_node],
-                    },
-                    pos,
-                ))
+                {
+                    // TODO FIX: left associative should take precedence if precedence is equal
+                    output_stack.append(&mut operator_stack);
+                }
+                operator_stack.insert(0, token); // Change vec to stack
+            }
+            Token::Integer(_) => {
+                output_stack.push(token);
             }
             _ => {
-                // Previous token is not an integer, so we are dealing with a unary operation
-                let (child_node, pos) = parse_expression(tokens, pos + 1)?;
-
-                Ok((
-                    ParseNode {
-                        entry: NodeType::UnaryOp(convert_token_to_unary_op(token)?),
-                        children: vec![child_node],
-                    },
-                    pos,
-                ))
+                return Err(format!(
+                    "Unexpected token found during expression parsing at {:?} at {}",
+                    tokens[pos], pos
+                ));
             }
-        },
-        Token::Integer(x) => match tokens[pos + 1] {
-            Token::Minus | Token::Plus | Token::Multiplication => Ok(parse_expression(tokens, pos + 1)?),
-            _ => Ok((ParseNode::new_childless(NodeType::Const(x)), pos + 1)),
-        },
-        _ => {
-            return Err(format!("Unexpected token found during expression parsing at {:?} at {}", tokens[pos], pos));
         }
+
+        pos += 1;
+        token = &tokens[pos];
     }
+
+    output_stack.append(&mut operator_stack);
+
+    Ok((parse_output_stack(&output_stack)?, pos))
 }
 
 pub fn parse_tokens(tokens: Vec<Token>) -> Result<ParseNode, String> {

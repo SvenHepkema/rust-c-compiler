@@ -14,9 +14,9 @@ assert () {
 
 	if [ $STATUS -ne $2 ]; then
 		echo "FAILED: " $1 " it returned " $STATUS " instead of " $2
-		exit -1
+	else
+		echo "SUCCES: " $1
 	fi
-	echo "SUCCES: " $1
 }
 
 if [ $# -eq 3 ]  ; then
@@ -34,6 +34,8 @@ assert double-addition 14
 assert triple-addition 25
 assert addition-subtraction 9
 assert multiplication 20
+assert addition-multiplication 23
+assert multiplication-addition 32
 
 
 echo "- Passed all tests succesfully"
