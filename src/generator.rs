@@ -2,20 +2,20 @@ use crate::parser::{BinaryOp, NodeType, ParseNode, UnaryOp};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Param {
-    Eax,
-    Ebx,
-    Ecx,
-    Edx,
+    Rax,
+    Rbx,
+    Rcx,
+    Rdx,
     Constant(i32),
 }
 
 impl Param {
     fn as_string(&self) -> String {
         match self {
-            Param::Eax => "eax".to_string(),
-            Param::Ebx => "ebx".to_string(),
-            Param::Ecx => "ecx".to_string(),
-            Param::Edx => "edx".to_string(),
+            Param::Rax => "rax".to_string(),
+            Param::Rbx => "rbx".to_string(),
+            Param::Rcx => "rcx".to_string(),
+            Param::Rdx => "rdx".to_string(),
             Param::Constant(x) => x.to_string(),
         }
     }
@@ -30,6 +30,8 @@ pub enum Asm {
     Add(Param, Param),
     Sub(Param, Param),
     Mul(Param, Param),
+    Push(Param),
+    Pop(Param),
 }
 
 impl Asm {
@@ -43,6 +45,12 @@ impl Asm {
             Asm::OSInterrupt => "int 0x80".to_string(),
             Asm::Mov(first, second) => {
                 format!("mov {}, {}", first.as_string(), second.as_string())
+            }
+            Asm::Push(param) => {
+                format!("push {}", param.as_string())
+            }
+            Asm::Pop(param) => {
+                format!("pop {}", param.as_string())
             }
             Asm::Neg(param) => {
                 format!("neg {}", param.as_string())
@@ -99,38 +107,38 @@ pub fn generate_operations(node: &ParseNode) -> Vec<Asm> {
         NodeType::Stmt => join_two(
             generate_operations(node.get_child(0)),
             &mut vec![
-                Asm::Mov(Param::Ebx, Param::Eax),
-                Asm::Mov(Param::Eax, Param::Constant(1)),
+                Asm::Mov(Param::Rbx, Param::Rax),
+                Asm::Mov(Param::Rax, Param::Constant(1)),
                 Asm::OSInterrupt,
             ],
         ),
         NodeType::Const(x) => {
-            vec![Asm::Mov(Param::Eax, Param::Constant(*x))]
+            vec![Asm::Mov(Param::Rax, Param::Constant(*x))]
         }
         NodeType::UnaryOp(t) => match t {
             UnaryOp::Minus => join_two(
                 generate_operations(node.get_child(0)),
-                &mut vec![Asm::Neg(Param::Eax)],
+                &mut vec![Asm::Neg(Param::Rax)],
             ),
         },
         NodeType::BinaryOp(t) => match t {
             BinaryOp::Minus => join_four(
                 generate_operations(node.get_child(1)),
-                &mut vec![Asm::Mov(Param::Ebx, Param::Eax)],
+                &mut vec![Asm::Push(Param::Rax)],
                 &mut generate_operations(node.get_child(0)),
-                &mut vec![Asm::Sub(Param::Eax, Param::Ebx)],
+                &mut vec![Asm::Pop(Param::Rbx), Asm::Sub(Param::Rax, Param::Rbx)],
             ),
             BinaryOp::Plus => join_four(
                 generate_operations(node.get_child(1)),
-                &mut vec![Asm::Mov(Param::Ebx, Param::Eax)],
+                &mut vec![Asm::Push(Param::Rax)],
                 &mut generate_operations(node.get_child(0)),
-                &mut vec![Asm::Add(Param::Eax, Param::Ebx)],
+                &mut vec![Asm::Pop(Param::Rbx), Asm::Add(Param::Rax, Param::Rbx)],
             ),
-            BinaryOp::Multiplication=> join_four(
+            BinaryOp::Multiplication => join_four(
                 generate_operations(node.get_child(1)),
-                &mut vec![Asm::Mov(Param::Ebx, Param::Eax)],
+                &mut vec![Asm::Push(Param::Rax)],
                 &mut generate_operations(node.get_child(0)),
-                &mut vec![Asm::Mul(Param::Eax, Param::Ebx)],
+                &mut vec![Asm::Pop(Param::Rbx), Asm::Mul(Param::Rax, Param::Rbx)],
             ),
         },
         _ => {
