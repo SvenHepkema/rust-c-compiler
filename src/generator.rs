@@ -1,4 +1,6 @@
 use crate::parser::{BinaryOp, NodeType, ParseNode, UnaryOp};
+use crate::constants::QUADWORD_LENGTH;
+
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Param {
@@ -6,7 +8,10 @@ pub enum Param {
     Rbx,
     Rcx,
     Rdx,
+    Rsp,
+    Rbp,
     Constant(i32),
+    BpMinus(usize),
 }
 
 impl Param {
@@ -16,7 +21,10 @@ impl Param {
             Param::Rbx => "rbx".to_string(),
             Param::Rcx => "rcx".to_string(),
             Param::Rdx => "rdx".to_string(),
+            Param::Rsp => "rsp".to_string(),
+            Param::Rbp => "rbp".to_string(),
             Param::Constant(x) => x.to_string(),
+            Param::BpMinus(x) => format!("[rbp - {}]", x),
         }
     }
 }
@@ -86,6 +94,14 @@ impl AddSelfToAsmVec for Vec<Asm> {
     }
 }
 
+impl AddSelfToAsmVec for &[Asm] {
+    fn add_self_to(&self, assembly: &mut Vec<Asm>) {
+        for asm in *self {
+            asm.add_self_to(assembly);
+        }
+    }
+}
+
 pub fn print_operations(operations: &Vec<Asm>) {
     println!("\nGenerated Operations:");
     for operation in operations {
@@ -106,29 +122,71 @@ macro_rules! join_asm  {
 }
 
 pub fn generate_operations(node: &ParseNode) -> Vec<Asm> {
-    match &node.entry {
-        NodeType::Fn(name) => {
+    match &node.node_type {
+        NodeType::Fn(name, n_variables) => {
             let function_name = match name.as_str() {
                 "main" => "_start".to_string(),
                 _ => name.clone(),
             };
-            join_asm!(
-                Asm::FunctionRef(function_name.clone()),
-                generate_operations(node.get_child(0))
-            )
+            let mut statements = vec![];
+
+            for child in node.children.iter() {
+                statements.append(&mut generate_operations(child));
+            }
+
+            if matches!(node.children.last().unwrap().node_type, NodeType::Return) {
+                let split_statements = statements.split_last().unwrap();
+
+                join_asm!(
+                    Asm::FunctionRef(function_name.clone()),
+                    Asm::Push(Param::Rbp),
+                    Asm::Mov(Param::Rbp, Param::Rsp),
+                    Asm::Sub(Param::Rsp, Param::Constant((n_variables * QUADWORD_LENGTH) as i32)),
+                    split_statements.1,
+                    Asm::Add(Param::Rsp, Param::Constant((n_variables * QUADWORD_LENGTH) as i32)),
+                    Asm::Pop(Param::Rbp),
+                    split_statements.0
+                )
+            } else {
+                join_asm!(
+                    Asm::FunctionRef(function_name.clone()),
+                    Asm::Push(Param::Rbp),
+                    Asm::Mov(Param::Rbp, Param::Rsp),
+                    Asm::Sub(Param::Rsp, Param::Constant((n_variables * QUADWORD_LENGTH) as i32)),
+                    statements,
+                    Asm::Add(Param::Rsp, Param::Constant((n_variables * QUADWORD_LENGTH) as i32)),
+                    Asm::Pop(Param::Rbp)
+                )
+            }
         }
-        NodeType::Stmt => join_asm!(
+        NodeType::Return => join_asm!(
             generate_operations(node.get_child(0)),
             Asm::Mov(Param::Rbx, Param::Rax),
             Asm::Mov(Param::Rax, Param::Constant(1)),
             Asm::OSInterrupt
         ),
+        NodeType::VarDecl(_, offset) => {
+            join_asm!(
+                generate_operations(node.get_child(0)),
+                Asm::Mov(Param::BpMinus(*offset as usize), Param::Rax)
+            )
+        }
+        NodeType::Var(_, offset) => {
+            vec![Asm::Mov(
+                Param::Rax,
+                Param::BpMinus(*offset as usize),
+            )]
+        }
         NodeType::Const(x) => {
             vec![Asm::Mov(Param::Rax, Param::Constant(*x))]
         }
         NodeType::UnaryOp(t) => match t {
             UnaryOp::Minus => {
                 join_asm!(generate_operations(node.get_child(0)), Asm::Neg(Param::Rax))
+            }
+            UnaryOp::Function(_) => {
+                // TODO: Implement
+                panic!("Function generation not implemented yet.")
             }
         },
         NodeType::BinaryOp(t) => match t {

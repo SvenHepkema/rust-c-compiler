@@ -36,3 +36,8 @@ assert addition-subtraction 9
 assert multiplication 20
 assert addition-multiplication 23
 assert multiplication-addition 32
+assert variable 8
+assert scalar-variable 16 
+assert two-variables 16
+assert multiple-variables 14
+assert multiple-expressions 144 

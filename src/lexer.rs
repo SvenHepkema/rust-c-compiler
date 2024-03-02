@@ -13,12 +13,25 @@ pub enum Token {
     Plus,
     Minus,
     Multiplication,
+    Assignment,
     SemiColon,
 }
 
 impl Token {
+    pub fn is_identifier(&self) -> bool {
+        match self {
+            Token::Identifier(_) => true,
+            _ => false
+        }
+    }
     pub fn is_operation(&self) -> bool {
         matches!(self, Token::Plus | Token::Minus | Token::Multiplication)
+    }
+    pub fn get_string_value(&self) -> &String {
+        match self {
+            Token::Identifier(x) => x,
+            _ => panic!("Could not get string value from non identifier token.")
+        }
     }
 }
 
@@ -79,6 +92,10 @@ pub fn tokenize(program_text: String) -> Result<Vec<Token>, String> {
             '*' => {
                 it.next();
                 tokens.push(Token::Multiplication);
+            }
+            '=' => {
+                it.next();
+                tokens.push(Token::Assignment);
             }
             '(' => {
                 it.next();

@@ -5,6 +5,7 @@ use rust_c_compiler::lexer::{print_tokens, tokenize, Token};
 use rust_c_compiler::parser::{parse_tokens, ParseNode, print_ast};
 
 use clap::Parser;
+use rust_c_compiler::symbolpass::symbolpass;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -43,13 +44,14 @@ fn main() {
     println!("\nTokens:");
     print_tokens(&tokens);
 
-    let ast: ParseNode = match parse_tokens(tokens) {
+    let mut ast: ParseNode = match parse_tokens(tokens) {
         Ok(parsed_ast) => parsed_ast,
         Err(reason) => {
             println!("Encountered error during the parser step: {}", reason);
             return;
         }
     };
+    symbolpass(&mut ast);
 
     println!("\nAST Tree:");
     print_ast(&ast);
