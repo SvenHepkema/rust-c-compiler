@@ -1,6 +1,5 @@
-use crate::parser::{BinaryOp, NodeType, ParseNode, UnaryOp};
 use crate::constants::QUADWORD_LENGTH;
-
+use crate::parser::{BinaryOp, NodeType, ParseNode, UnaryOp};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum Param {
@@ -141,9 +140,15 @@ pub fn generate_operations(node: &ParseNode) -> Vec<Asm> {
                     Asm::FunctionRef(function_name.clone()),
                     Asm::Push(Param::Rbp),
                     Asm::Mov(Param::Rbp, Param::Rsp),
-                    Asm::Sub(Param::Rsp, Param::Constant((n_variables * QUADWORD_LENGTH) as i32)),
+                    Asm::Sub(
+                        Param::Rsp,
+                        Param::Constant((n_variables * QUADWORD_LENGTH) as i32)
+                    ),
                     split_statements.1,
-                    Asm::Add(Param::Rsp, Param::Constant((n_variables * QUADWORD_LENGTH) as i32)),
+                    Asm::Add(
+                        Param::Rsp,
+                        Param::Constant((n_variables * QUADWORD_LENGTH) as i32)
+                    ),
                     Asm::Pop(Param::Rbp),
                     split_statements.0
                 )
@@ -152,9 +157,15 @@ pub fn generate_operations(node: &ParseNode) -> Vec<Asm> {
                     Asm::FunctionRef(function_name.clone()),
                     Asm::Push(Param::Rbp),
                     Asm::Mov(Param::Rbp, Param::Rsp),
-                    Asm::Sub(Param::Rsp, Param::Constant((n_variables * QUADWORD_LENGTH) as i32)),
+                    Asm::Sub(
+                        Param::Rsp,
+                        Param::Constant((n_variables * QUADWORD_LENGTH) as i32)
+                    ),
                     statements,
-                    Asm::Add(Param::Rsp, Param::Constant((n_variables * QUADWORD_LENGTH) as i32)),
+                    Asm::Add(
+                        Param::Rsp,
+                        Param::Constant((n_variables * QUADWORD_LENGTH) as i32)
+                    ),
                     Asm::Pop(Param::Rbp)
                 )
             }
@@ -172,10 +183,7 @@ pub fn generate_operations(node: &ParseNode) -> Vec<Asm> {
             )
         }
         NodeType::Var(_, offset) => {
-            vec![Asm::Mov(
-                Param::Rax,
-                Param::BpMinus(*offset as usize),
-            )]
+            vec![Asm::Mov(Param::Rax, Param::BpMinus(*offset as usize))]
         }
         NodeType::Const(x) => {
             vec![Asm::Mov(Param::Rax, Param::Constant(*x))]

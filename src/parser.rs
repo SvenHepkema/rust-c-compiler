@@ -1,4 +1,5 @@
 use crate::lexer::Token;
+use crate::{verify_token, verify_next_token};
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub enum UnaryOp {
@@ -68,6 +69,7 @@ pub fn print_ast(node: &ParseNode) {
 
 trait GetTokenOrPrintErr {
     fn get_token(&self, pos: usize) -> Result<&Token, String>;
+    fn get_next_token(&self, pos: &mut usize) -> Result<&Token, String>;
 }
 
 impl GetTokenOrPrintErr for &[Token] {
@@ -82,86 +84,59 @@ impl GetTokenOrPrintErr for &[Token] {
             )),
         }
     }
-}
 
-fn ask_next(expected_token: Token, tokens: &[Token], pos: usize) -> Result<bool, String> {
-    let token = tokens.get_token(pos)?;
-
-    Ok(*token == expected_token)
-}
-
-fn assert_next(expected_token: Token, tokens: &[Token], pos: usize) -> Result<usize, String> {
-    let token = tokens.get_token(pos)?;
-
-    if *token != expected_token {
-        return Err(format!(
-            "Expected {:?}, but found {:?} at {}",
-            expected_token, *token, pos
-        ));
+    fn get_next_token(&self, pos: &mut usize) -> Result<&Token, String> {
+        *pos += 1;
+        let token = &self.get_token(*pos)?;
+        Ok(token)
     }
-
-    Ok(pos + 1)
 }
 
-fn parse_function(tokens: &[Token], mut pos: usize) -> Result<(ParseNode, usize), String> {
-    pos = assert_next(Token::Int, tokens, pos)?;
-    pos = assert_next(Token::Identifier("main".to_string()), tokens, pos)?;
-    pos = assert_next(Token::LParenthesis, tokens, pos)?;
-    pos = assert_next(Token::RParenthesis, tokens, pos)?;
-    pos = assert_next(Token::LCurly, tokens, pos)?;
+fn parse_function(tokens: &[Token], pos: &mut usize) -> Result<ParseNode, String> {
+    verify_token!(tokens, pos, Token::Int)?;
+    verify_next_token!(tokens, pos, Token::Identifier { .. })?;
+    verify_next_token!(tokens, pos, Token::LParenthesis)?;
+    verify_next_token!(tokens, pos, Token::RParenthesis)?;
+    verify_next_token!(tokens, pos, Token::LCurly)?;
 
     let mut func_node = ParseNode::new(NodeType::Fn("main".to_string(), 0));
 
-    while !ask_next(Token::RCurly, tokens, pos)? {
+    while !matches!(tokens.get_token(*pos + 1)?, Token::RCurly) {
         let stmt_node: ParseNode;
-        (stmt_node, pos) = parse_statement(tokens, pos)?;
+        stmt_node = parse_statement(tokens, pos)?;
         func_node.children.push(stmt_node);
     }
 
-    pos = assert_next(Token::RCurly, tokens, pos)?;
+    verify_next_token!(tokens, pos, Token::RCurly)?;
 
-    Ok((func_node, pos))
+    Ok(func_node)
 }
 
-fn parse_statement(tokens: &[Token], mut pos: usize) -> Result<(ParseNode, usize), String> {
-    let mut token = tokens.get_token(pos)?;
-    pos += 1;
+fn parse_statement(tokens: &[Token], pos: &mut usize) -> Result<ParseNode, String> {
+    let token = tokens.get_next_token(pos)?;
 
     match *token {
         Token::Return => {
-            let (exp_node, mut pos) = parse_expression(tokens, pos)?;
-            pos = assert_next(Token::SemiColon, tokens, pos)?;
+            let exp_node = parse_expression(tokens, pos)?;
 
-            Ok((
-                ParseNode {
-                    node_type: NodeType::Return,
+            Ok(ParseNode {
+                node_type: NodeType::Return,
+                children: vec![exp_node],
+            })
+        }
+        Token::Int => match tokens.get_next_token(pos)? {
+            Token::Identifier(x) => {
+                verify_next_token!(tokens, pos, Token::Assignment)?;
+
+                let exp_node = parse_expression(tokens, pos)?;
+
+                Ok(ParseNode {
+                    node_type: NodeType::VarDecl(x.clone(), 0),
                     children: vec![exp_node],
-                },
-                pos,
-            ))
-        }
-        Token::Int => {
-            token = tokens.get_token(pos)?;
-            pos += 1;
-
-            match token {
-                Token::Identifier(x) => {
-                    pos = assert_next(Token::Assignment, tokens, pos)?;
-
-                    let (exp_node, mut pos) = parse_expression(tokens, pos)?;
-                    pos = assert_next(Token::SemiColon, tokens, pos)?;
-
-                    Ok((
-                        ParseNode {
-                            node_type: NodeType::VarDecl(x.clone(), 0),
-                            children: vec![exp_node],
-                        },
-                        pos,
-                    ))
-                }
-                _ => Err(format!("No identifier found at {}.", pos)),
+                })
             }
-        }
+            _ => Err(format!("No identifier found at {}.", pos)),
+        },
         _ => Err(format!(
             "Found statement with invalid starting token: {:?}",
             token
@@ -207,7 +182,7 @@ fn convert_token_to_value(token: &Token) -> Result<NodeType, String> {
     }
 }
 
-fn convert_token_to_unary_op(token: &Token) -> Result<UnaryOp, String> {
+fn get_unary_op_from_token(token: &Token) -> Result<UnaryOp, String> {
     match token {
         Token::Minus => Ok(UnaryOp::Minus),
         Token::Identifier(x) => Ok(UnaryOp::Function(x.clone())),
@@ -218,7 +193,7 @@ fn convert_token_to_unary_op(token: &Token) -> Result<UnaryOp, String> {
     }
 }
 
-fn convert_token_to_binary_op(token: &Token) -> Result<BinaryOp, String> {
+fn get_binary_op_from_token(token: &Token) -> Result<BinaryOp, String> {
     match token {
         Token::Minus => Ok(BinaryOp::Minus),
         Token::Plus => Ok(BinaryOp::Plus),
@@ -230,73 +205,96 @@ fn convert_token_to_binary_op(token: &Token) -> Result<BinaryOp, String> {
     }
 }
 
-// Source: https://en.wikipedia.org/wiki/Shunting_yard_algorithm
-fn parse_expression(tokens: &[Token], mut pos: usize) -> Result<(ParseNode, usize), String> {
-    let mut token = tokens.get_token(pos)?;
+fn process_operation(
+    token: &Token,
+    output_stack: &mut Vec<ParseNode>,
+    operator_stack: &mut Vec<ParseNode>,
+    previous_was_value: &mut bool,
+) -> Result<(), String> {
+    let node: ParseNode;
 
+    if !*previous_was_value {
+        node = ParseNode::new(NodeType::UnaryOp(get_unary_op_from_token(token)?));
+    } else {
+        node = ParseNode::new(NodeType::BinaryOp(get_binary_op_from_token(token)?));
+
+        let previous_operator_precedence = match operator_stack.first() {
+            Some(x) => get_precedence(x),
+            None => 0,
+        };
+        if get_precedence(&node) < previous_operator_precedence {
+            // TODO FIX: left associative should take precedence if precedence is equal
+            output_stack.append(operator_stack);
+        }
+    }
+
+    (*operator_stack).insert(0, node); // Change vec to stack
+    *previous_was_value = false;
+
+    Ok(())
+}
+
+fn process_value(
+    token: &Token,
+    output_stack: &mut Vec<ParseNode>,
+    previous_was_value: &mut bool,
+) -> Result<(), String> {
+    let node: ParseNode;
+
+    if matches!(token, Token::Identifier { .. }) {
+        node = ParseNode::new(NodeType::Var(token.get_string_value().clone(), 0));
+    } else {
+        node = ParseNode::new(convert_token_to_value(&token.clone())?);
+    }
+
+    output_stack.push(node);
+    *previous_was_value = true;
+
+    Ok(())
+}
+
+// Source: https://en.wikipedia.org/wiki/Shunting_yard_algorithm
+fn parse_expression(tokens: &[Token], pos: &mut usize) -> Result<ParseNode, String> {
     let mut output_stack: Vec<ParseNode> = vec![];
     let mut operator_stack: Vec<ParseNode> = vec![];
-
     let mut previous_was_value: bool = false;
 
-    while *token != Token::SemiColon {
-        let node: ParseNode;
-
+    let mut token = tokens.get_next_token(pos)?;
+    while !matches!(token, Token::SemiColon) {
         let mut is_function: bool = false;
-        if token.is_identifier() {
-            is_function = ask_next(Token::LParenthesis, tokens, pos)?;
+
+        if matches!(token, Token::Identifier { .. }) {
+            is_function = matches!(tokens.get_token(*pos + 1)?, Token::LParenthesis);
         }
 
         if is_function || token.is_operation() {
-            if !previous_was_value {
-                // Must be unitary
-                node = ParseNode::new(NodeType::UnaryOp(convert_token_to_unary_op(token)?));
-            } else {
-                // Must be binary
-                node = ParseNode::new(NodeType::BinaryOp(convert_token_to_binary_op(token)?));
-
-                let precedence = get_precedence(&node);
-                if precedence
-                    < match operator_stack.first() {
-                        Some(x) => get_precedence(x),
-                        None => 0,
-                    }
-                {
-                    // TODO FIX: left associative should take precedence if precedence is equal
-                    output_stack.append(&mut operator_stack);
-                }
-            }
-
-            operator_stack.insert(0, node); // Change vec to stack
-            previous_was_value = false;
+            process_operation(
+                token,
+                &mut output_stack,
+                &mut operator_stack,
+                &mut previous_was_value,
+            )?;
         } else {
-            if token.is_identifier() {
-                node = ParseNode::new(NodeType::Var(token.get_string_value().clone(), 0));
-            } else {
-                node = ParseNode::new(convert_token_to_value(&token.clone())?);
-            }
-
-            output_stack.push(node);
-            previous_was_value = true;
+            process_value(token, &mut output_stack, &mut previous_was_value)?;
         }
 
-        pos += 1;
-        token = tokens.get_token(pos)?;
+        token = tokens.get_next_token(pos)?;
     }
 
     output_stack.append(&mut operator_stack);
 
-    Ok((parse_output_stack(&mut output_stack)?, pos))
+    Ok(parse_output_stack(&mut output_stack)?)
 }
 
 pub fn parse_tokens(tokens: Vec<Token>) -> Result<ParseNode, String> {
-    parse_function(&tokens, 0).and_then(|(n, i)| {
-        if i == tokens.len() {
-            Ok(n)
+    let mut pos = 0;
+    parse_function(&tokens, &mut pos).and_then(|node| {
+        if (1 + pos) == tokens.len() {
+            Ok(node)
         } else {
             Err(format!(
                 "Parsing Error: Expected end of input, found {:?} at {}",
-                &tokens[i], i
+                &tokens[pos], pos
             ))
         }
     })

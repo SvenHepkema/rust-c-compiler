@@ -41,3 +41,10 @@ assert scalar-variable 16
 assert two-variables 16
 assert multiple-variables 14
 assert multiple-expressions 144 
+assert function-return-int 2
+assert function-with-param 2
+assert function-two-params 2
+assert function-three-params 6
+assert function-four-params 24
+assert function-with-local-variables 12
+assert function-calling-function 12
